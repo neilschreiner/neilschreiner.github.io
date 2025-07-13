@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Category</title> <!-- Changed title here -->
+    <style>
+        /* style.css content */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top instead of center to prevent jumping */
+            min-height: 100vh;
+            background-color: #f4f4f4; /* Default background */
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.5s ease; /* Smooth transition for background color */
+        }
+
+        /* New background colors */
+        body.correct-bg {
+            background-color: #e0f7fa; /* Light blue */
+        }
+
+        body.incorrect-bg {
+            background-color: #ffebee; /* Light red */
+        }
+
+        .game-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            color: #333;
+            margin-top: 30px; /* Added more space above */
+            margin-bottom: 30px; /* Adjusted space below */
+        }
+
+        .difficulty-buttons {
+            margin-bottom: 20px;
+        }
+
+        .difficulty-buttons button {
+            padding: 10px 20px;
+            margin: 0 5px; /* Adjusted margin for three buttons */
+            background-color: #6c757d; /* Default gray */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .difficulty-buttons button:hover {
+            background-color: #5a6268;
+        }
+
+        .difficulty-buttons button.selected {
+            background-color: #007bff; /* Blue for selected */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Pressed effect */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: #555;
+        }
+
+        tr.hidden {
+            display: none;
+        }
+
+        tr.answer-row td {
+            font-weight: bold;
+            background-color: #e6ffe6; /* Light green for the answer row */
+        }
+
+        /* New style for correctly guessed clues */
+        tr.correct-clue-revealed td {
+            background-color: #333;
+            color: white;
+        }
+
+        .guess-section {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #guessInput {
+            padding: 10px;
+            width: calc(100% - 20px);
+            max-width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        #submitGuess, #playAgainButton {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        #submitGuess:hover, #playAgainButton:hover {
+            background-color: #0056b3;
+        }
+
+        #playAgainButton {
+            margin-top: 20px;
+            background-color: #28a745; /* Green for play again */
+        }
+
+        #playAgainButton:hover {
+            background-color: #218838;
+        }
+
+        /* Shake animation */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            10% { transform: translateX(-10px); }
+            20% { transform: translateX(10px); }
+            30% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            50% { transform: translateX(-10px); }
+            60% { transform: translateX(10px); }
+            70% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+            90% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+            color: red; /* For incorrect guesses */
+        }
+
+        #incorrectGuesses {
+            margin-top: 10px;
+            color: #888;
+            font-size: 0.9em;
+            min-height: 20px; /* To prevent layout shift */
+        }
+
+        #incorrectGuesses del {
+            color: #b3b3b3;
+            margin: 0 5px;
+        }
+
+        /* Confetti styles */
+        #confetti-container, #emoji-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through */
+            overflow: hidden;
+            z-index: 9999; /* Ensure it's on top */
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00; /* Default, will be overridden by JS */
+            opacity: 0;
+            animation: fall 3s forwards;
+            border-radius: 50%; /* Make it round */
+        }
+
+        .emoji {
+            position: absolute;
+            font-size: 24px; /* Size of the emoji */
+            opacity: 0;
+            animation: fall 3s forwards; /* Use the same fall animation */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2); /* Add a slight shadow for visibility */
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translate(var(--x), var(--y)) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--x-end), var(--y-end)) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="difficulty-buttons">
+            <button id="easyButton">Easy</button>
+            <button id="mediumButton">Medium</button>
+            <button id="hardButton">Hard</button>
+        </div>
+        <h1>Guess the Category!</h1>
+        <table id="clueTable">
+            <thead>
+                <tr>
+                    <th>Clue #</th>
+                    <th>Clue</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="clue1-row" class="hidden"><td>1</td><td id="clue1"></td></tr>
+                <tr id="clue2-row" class="hidden"><td>2</td><td id="clue2"></td></tr>
+                <tr id="clue3-row" class="hidden"><td>3</td><td id="clue3"></td></tr>
+                <tr id="clue4-row" class="hidden"><td>4</td><td id="clue4"></td></tr>
+                <tr id="clue5-row" class="hidden"><td>5</td><td id="clue5"></td></tr>
+                <tr id="answer-row" class="hidden answer-row"><td>Answer</td><td id="answer"></td></tr>
+            </tbody>
+        </table>
+
+        <div class="guess-section">
+            <input type="text" id="guessInput" placeholder="Enter your guess" autocomplete="off">
+            <button id="submitGuess">Submit Guess</button>
+        </div>
+
+        <p id="incorrectGuesses"></p> <!-- New element for incorrect guesses -->
+
+        <button id="playAgainButton" class="hidden">Play Again?</button>
+
+        <p id="message"></p>
+    </div>
+
+    <div id="confetti-container"></div> <!-- Confetti container -->
+    <div id="emoji-container"></div> <!-- Emoji container -->
+
+    <script>
+        // script.js content
+        document.addEventListener('DOMContentLoaded', () => {
+            const body = document.body;
+            const easyButton = document.getElementById('easyButton');
+            const mediumButton = document.getElementById('mediumButton');
+            const hardButton = document.getElementById('hardButton');
+            const clueTableBody = document.querySelector('#clueTable tbody');
+            const guessInput = document.getElementById('guessInput');
+            const submitGuessButton = document.getElementById('submitGuess');
+            const playAgainButton = document.getElementById('playAgainButton');
+            const messageDisplay = document.getElementById('message');
+            const incorrectGuessesDisplay = document.getElementById('incorrectGuesses');
+            const confettiContainer = document.getElementById('confetti-container');
+            const emojiContainer = document.getElementById('emoji-container');
+
+            let gameData = [];
+            let currentRow = [];
+            let currentClueIndex = 0;
+            const maxClues = 5;
+            let confettiInterval;
+            let sadEmojiInterval;
+            let happyEmojiInterval;
+
+            // Helper function to normalize strings for comparison
+            function normalizeString(str) {
+                return str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~() ]/g, "").replace(/\s/g, '');
+            }
+
+            // Helper function to check for similar answers
+            function isSimilarAnswer(playerGuess, correctAnswer) {
+                const normalizedPlayer = normalizeString(playerGuess);
+                const normalizedCorrect = normalizeString(correctAnswer);
+
+                // Exact match
+                if (normalizedPlayer === normalizedCorrect) {
+                    return true;
+                }
+
+                // Check if player's guess is contained within the correct answer
+                // e.g., "rocket" in "parts of a rocket"
+                if (normalizedCorrect.includes(normalizedPlayer) && normalizedPlayer.length > 2) { // Avoid very short substrings
+                    return true;
+                }
+
+                // Check if correct answer is contained within player's guess (less common for these examples)
+                // e.g., "math" in "mathematical operations" (this is handled by the above if correct contains player)
+                // For "Mathematical operations" vs "math", if playerGuess is "math", and correctAnswer is "Mathematical operations",
+                // normalizedCorrect.includes(normalizedPlayer) will be true.
+                // If playerGuess is "Mathematical operations" and correctAnswer is "math",
+                // normalizedPlayer.includes(normalizedCorrect) would be true.
+                if (normalizedPlayer.includes(normalizedCorrect) && normalizedCorrect.length > 2) {
+                     return true;
+                }
+
+                // Additional logic for specific cases, e.g., "math" vs "mathematical operations"
+                // This is already covered by `includes` if we consider "mathematical operations" contains "math".
+                // Let's make sure to check for common root words if needed, but for now, includes is sufficient.
+
+                return false;
+            }
+
+            // Easy CSV data embedded directly in the JavaScript (100+ entries)
+            const easyCsvData = `
+"Has a trunk", "Can be found in Africa or Asia", "Eats plants", "Often grey", "Largest land animal", "Elephant"
+"You read them", "Have pages", "Contain stories or information", "Found in libraries", "Can be hard or soft cover", "Books"
+"You wear them on your feet", "Protect your feet", "Can be made of leather", "Come in pairs", "Different styles for different occasions", "Shoes"
+"It's a color", "Often associated with the sky or ocean", "Can be found in nature", "One of the primary colors", "Associated with sadness sometimes", "Blue"
+"It's a fruit", "Can be red or green", "Grows on trees", "Often used in pies", "Keeps the doctor away", "Apple"
+"A place for learning", "Has classrooms and teachers", "Students attend here", "You go to get an education", "Can be public or private", "School"
+"A small, furry animal", "Known for eating cheese", "Often found in houses", "Has a long tail", "Can be a pet or a pest", "Mouse"
+"A musical instrument", "Has black and white keys", "You press the keys to make sound", "Can be grand or upright", "Often found in concert halls", "Piano"
+"A type of weather", "Water falling from the sky", "Can be light or heavy", "Often accompanied by thunder", "Makes plants grow", "Rain"
+"A hot beverage", "Made from roasted beans", "Often drunk in the morning", "Can be black or with milk", "Has caffeine", "Coffee"
+"A large body of water", "Covers most of the Earth", "Has waves and tides", "Home to many sea creatures", "You can swim or sail on it", "Ocean"
+"A place where animals live", "Can be hot or cold", "Has many trees and plants", "Home to wild animals", "You can hike or explore here", "Forest"
+"A small, round fruit", "Often red or purple", "Grows in bunches on vines", "Used to make wine", "Sweet and juicy", "Grape"
+"A yellow citrus fruit", "Sour taste", "Used in drinks and cooking", "Rich in Vitamin C", "Can be squeezed for juice", "Lemon"
+"A domesticated animal", "Known for barking", "Man's best friend", "Can be a pet or a working animal", "Loyal and playful", "Dog"
+"A large bird", "Cannot fly", "Native to Australia", "Known for its long neck and legs", "Fast runner", "Emu"
+"A sweet treat", "Made from cocoa beans", "Comes in bars or pieces", "Can be dark, milk, or white", "Often given as a gift", "Chocolate"
+"A frozen dessert", "Made from milk and sugar", "Comes in many flavors", "Often served in a cone or bowl", "Melts quickly in the sun", "Ice Cream"
+"A popular sport", "Played with a ball and a net", "Two teams compete", "Can be played indoors or outdoors", "Requires running and jumping", "Basketball"
+"A type of transportation", "Has two wheels", "You pedal to move it", "Good for exercise", "Can be electric or manual", "Bicycle"
+"A place to buy food", "Has many aisles", "Sells fresh produce and packaged goods", "You use a cart to shop", "Often has a bakery and deli", "Grocery Store"
+"A small, winged insect", "Known for making honey", "Lives in a hive", "Pollinates flowers", "Can sting", "Bee"
+"A large, green vegetable", "Has many layers", "Can be eaten raw or cooked", "Often used in salads or soups", "Has a strong smell when cut", "Onion"
+"A small, furry rodent", "Known for storing nuts", "Has a bushy tail", "Lives in trees", "Active in the daytime", "Squirrel"
+"A type of music", "Often played with guitars and drums", "Has a strong beat", "Popular with young people", "Can be loud and energetic", "Rock"
+"A hot drink", "Made from dried leaves", "Often served with milk and sugar", "Comes in many varieties", "Popular in the UK", "Tea"
+"A large, flightless bird", "Native to Africa", "Known for its speed", "Lays the largest eggs", "Can be ridden in some places", "Ostrich"
+"A building for books", "People go there to read or study", "You can borrow books for free", "Has quiet areas", "Often has computers and Wi-Fi", "Library"
+"A round, orange fruit", "Has a thick peel", "Can be eaten fresh or juiced", "Rich in Vitamin C", "Associated with sunshine", "Orange"
+"A place to watch movies", "Has a big screen and comfortable seats", "You buy tickets to enter", "Sells popcorn and drinks", "Dark inside during the show", "Movie Theater"
+"A small, green vegetable", "Grows in pods", "Often eaten steamed or boiled", "Sweet taste", "Good source of protein and fiber", "Pea"
+"A large, wild cat", "Known for its stripes", "Native to Asia", "A powerful predator", "Can roar loudly", "Tiger"
+"A game played with cards", "Many different variations", "Can be for one or more players", "Involves strategy and luck", "Often played for fun or money", "Poker"
+"A yellow fruit", "Grows in tropical climates", "Has a curved shape", "Peel before eating", "Favorite food of monkeys", "Good source of potassium", "Banana"
+"A popular board game", "Involves buying and selling properties", "Uses dice and tokens", "Goal is to bankrupt opponents", "Has a famous top hat piece", "Monopoly"
+"A cold, sweet drink", "Often carbonated", "Comes in many flavors", "Served in bottles or cans", "Can be diet or regular", "Soda"
+"A large, aquatic mammal", "Lives in the ocean", "Known for its blowhole", "Can be very large", "Sings complex songs underwater", "Whale"
+"A small, flying insect", "Known for biting", "Can spread diseases", "Active in warm weather", "Makes a buzzing sound", "Mosquito"
+"A type of footwear", "Worn on the foot and ankle", "Can be for sports or fashion", "Often made of canvas or leather", "Has laces", "Sneaker"
+"A green vegetable", "Has a tree-like appearance", "Often steamed or roasted", "Good source of vitamins", "Part of the cabbage family", "Broccoli"
+"A place where you sleep", "Has a bed and pillows", "Often has a closet for clothes", "Can be messy or tidy", "You spend a lot of time here", "Bedroom"
+"A small, furry animal", "Known for hopping", "Eats carrots and lettuce", "Has long ears", "Can be a pet or wild", "Rabbit"
+"A red fruit", "Often used in salads or sauces", "Grows on vines", "Can be sliced or diced", "Ketchup is made from it", "Tomato"
+"A type of vehicle", "Has four wheels", "Used for transportation", "You drive it on roads", "Can be a sedan, SUV, or truck", "Car"
+"A sweet, sticky substance", "Made by bees", "Often used as a sweetener", "Can be light or dark", "Goes well with toast", "Honey"
+"A large, domestic animal", "Known for giving milk", "Eats grass", "Often found on farms", "Can be black and white", "Cow"
+"A place to cook food", "Has a stove and oven", "Often has a refrigerator", "Where meals are prepared", "Can be small or large", "Kitchen"
+"A small, round object", "Used in many games", "Can bounce or roll", "Made of rubber or plastic", "Soccer, basketball, tennis all use one", "Ball"
+"A type of weather", "Frozen water falling from the sky", "White and fluffy", "Can be used to build snowmen", "Makes the ground slippery", "Snow"
+"A hot meal", "Often eaten for breakfast", "Made from eggs", "Can be scrambled or fried", "Goes well with bacon", "Eggs"
+"A place to swim", "Can be indoors or outdoors", "Filled with water", "Often found at hotels or gyms", "You can cool off here", "Swimming Pool"
+"A small, winged creature", "Often colorful", "Starts as a caterpillar", "Flies from flower to flower", "Symbol of transformation", "Butterfly"
+"A long, green vegetable", "Often eaten raw in salads", "Has a crunchy texture", "Can be sliced or diced", "Often paired with dip", "Cucumber"
+"A type of clothing", "Worn on the upper body", "Has sleeves and a collar", "Can be short or long-sleeved", "Often worn with a tie", "Shirt"
+"A place to sit", "Has a back and legs", "Can be made of wood or metal", "Found in homes and offices", "Used for dining or working", "Chair"
+"A type of weather", "Strong winds and rain", "Can cause damage to buildings", "Has an eye in the center", "Named alphabetically", "Hurricane"
+"A sweet, juicy fruit", "Often red or green", "Has a core with seeds", "Grows on trees", "Popular snack", "Apple"
+"A place to shop", "Has many different stores", "Sells clothes, electronics, food", "Often has a food court", "Can be very large and busy", "Mall"
+"A small, domestic animal", "Known for purring", "Chases mice", "Has whiskers and a tail", "Can be a pet", "Cat"
+"A type of bird", "Known for its beautiful feathers", "Can mimic human speech", "Often kept as a pet", "Can be green, blue, or yellow", "Parrot"
+"A place to eat", "Sells food and drinks", "You sit at tables or booths", "You pay for your meal", "Can be fast food or fine dining", "Restaurant"
+"A cold, sweet treat", "Made from fruit juice and sugar", "Often served on a stick", "Melts in warm weather", "Comes in many flavors", "Popsicle"
+"A type of footwear", "Worn on the foot", "Can be open or closed-toed", "Often worn in warm weather", "Has a flat sole", "Sandal"
+"A large, green fruit", "Has a hard rind", "Sweet and juicy inside", "Often eaten in summer", "Has many black seeds", "Watermelon"
+"A type of plant", "Has a tall stem and leaves", "Grows in fields", "Used to make bread and pasta", "Harvested by farmers", "Wheat"
+"A place to play", "Has swings and slides", "Often found in parks or schools", "Children love to go here", "Can be sandy or grassy", "Playground"
+"A small, domestic animal", "Known for squeaking", "Often kept in cages", "Eats seeds and vegetables", "Has a short tail", "Hamster"
+"A type of weather", "Water vapor in the air", "Makes it hard to see", "Often occurs in the morning", "Can be thick or thin", "Fog"
+"A place to keep money", "Can be made of leather or fabric", "Carried in a pocket or purse", "Holds cards and bills", "Has a clasp or zipper", "Wallet"
+"A type of clothing", "Worn on the legs", "Made of denim", "Often blue", "Has pockets and a zipper", "Jeans"
+"A place to grow plants", "Has soil and sunlight", "You water the plants regularly", "Can have flowers or vegetables", "Often found in backyards", "Garden"
+"A small, domestic bird", "Known for singing", "Often kept in a cage", "Eats seeds", "Can be yellow or green", "Canary"
+"A type of transportation", "Flies in the sky", "Has wings and engines", "Carries passengers or cargo", "Lands at airports", "Airplane"
+"A hot drink", "Made from ground beans", "Often drunk in the morning", "Can be black or with milk", "Has caffeine", "Coffee"
+"A place to read books", "Has many shelves", "You can borrow books for free", "Often has quiet areas", "Has computers and Wi-Fi", "Library"
+"A type of footwear", "Worn on the foot", "Covers the ankle", "Can be for warmth or fashion", "Often made of leather or suede", "Boot"
+"A place to exercise", "Has weights and machines", "People go there to get fit", "Often has trainers", "Can be busy or quiet", "Gym"
+"A small, domestic animal", "Known for being playful", "Has soft fur", "Often kept as a pet", "Can be a guinea pig or hamster", "Rodent"
+"A type of weather", "A sudden, heavy fall of rain", "Often short-lived", "Can be accompanied by thunder", "Makes a loud noise on the roof", "Downpour"
+"A place to buy clothes", "Has changing rooms", "Sells shirts, pants, dresses", "You try on items before buying", "Can be a boutique or department store", "Clothing Store"
+"A small, domestic animal", "Known for its quills", "Rolls into a ball when scared", "Eats insects and fruit", "Nocturnal", "Hedgehog"
+"A type of music", "Often played with violins and pianos", "Has complex arrangements", "Performed by orchestras", "Can be instrumental or vocal", "Classical"
+"A hot drink", "Made from tea leaves", "Often served with milk and sugar", "Comes in many varieties", "Popular in the UK", "Tea"
+"A large, flightless bird", "Native to Africa", "Known for its speed", "Lays the largest eggs", "Can be ridden in some places", "Ostrich"
+"A building for books", "People go there to read or study", "You can borrow books for free", "Has quiet areas", "Often has computers and Wi-Fi", "Library"
+"A round, orange fruit", "Has a thick peel", "Can be eaten fresh or juiced", "Rich in Vitamin C", "Associated with sunshine", "Orange"
+"A place to watch movies", "Has a big screen and comfortable seats", "You buy tickets to enter", "Sells popcorn and drinks", "Dark inside during the show", "Movie Theater"
+"A small, green vegetable", "Grows in pods", "Often eaten steamed or boiled", "Sweet taste", "Good source of protein and fiber", "Pea"
+"A large, wild cat", "Known for its stripes", "Native to Asia", "A powerful predator", "Can roar loudly", "Tiger"
+"A game played with cards", "Many different variations", "Can be for one or more players", "Involves strategy and luck", "Often played for fun or money", "Poker"
+"A yellow fruit", "Grows in tropical climates", "Has a curved shape", "Peel before eating", "Favorite food of monkeys", "Banana"
+"A popular board game", "Involves buying and selling properties", "Uses dice and tokens", "Goal is to bankrupt opponents", "Has a famous top hat piece", "Monopoly"
+"A cold, sweet drink", "Often carbonated", "Comes in many flavors", "Served in bottles or cans", "Can be diet or regular", "Soda"
+"A large, aquatic mammal", "Lives in the ocean", "Known for its blowhole", "Can be very large", "Sings complex songs underwater", "Whale"
+"A small, flying insect", "Known for biting", "Can spread diseases", "Active in warm weather", "Makes a buzzing sound", "Mosquito"
+"A type of footwear", "Worn on the foot and ankle", "Can be for sports or fashion", "Often made of canvas or leather", "Has laces", "Sneaker"
+"A green vegetable", "Has a tree-like appearance", "Often steamed or roasted", "Good source of vitamins", "Part of the cabbage family", "Broccoli"
+"A place to learn", "Has teachers and students", "You go there to study", "Can be elementary or high", "Has classrooms and a library", "School"
+"A furry pet", "Known for purring", "Chases mice", "Likes to nap in sunbeams", "Has whiskers and a tail", "Cat"
+"A round, red fruit", "Grows on trees", "Can be eaten raw or in pies", "Keeps the doctor away", "Crisp and juicy", "Apple"
+"A yellow citrus fruit", "Very sour", "Used in lemonade", "Rich in Vitamin C", "Often sliced for drinks", "Lemon"
+"A large body of water", "Salty and vast", "Home to fish and whales", "Has waves and currents", "Covers most of the Earth", "Ocean"
+"A domesticated animal", "Known for barking", "Loyal and friendly", "Can be a guard or a companion", "Comes in many breeds", "Dog"
+"A sweet frozen treat", "Made from milk and sugar", "Comes in many flavors", "Served in cones or bowls", "Melts on a hot day", "Ice Cream"
+"A sport with a ball and hoop", "Players dribble and shoot", "Two teams compete", "Played on a court", "Michael Jordan was famous for it", "Basketball"
+"A two-wheeled vehicle", "Powered by pedaling", "Good for exercise", "Can be ridden on roads or trails", "Has handlebars and a seat", "Bicycle"
+"A place to buy groceries", "Has aisles of food", "You use a shopping cart", "Sells fruits, vegetables, meat", "Has a checkout counter", "Grocery Store"
+"A small flying insect", "Makes honey", "Lives in a hive", "Pollinates flowers", "Can sting", "Bee"
+"A green vegetable", "Has many layers", "Can make you cry when cut", "Used in salads and cooking", "Has a strong smell", "Onion"
+"A small rodent", "Known for bushy tail", "Climbs trees", "Eats nuts and seeds", "Often seen in parks", "Squirrel"
+"A genre of music", "Often loud and energetic", "Uses guitars, drums, bass", "Popular with young people", "Artists like Queen and Led Zeppelin", "Rock"
+"A warm drink", "Made from leaves steeped in hot water", "Can be black, green, or herbal", "Often served with milk or lemon", "Popular in the morning or afternoon", "Tea"
+"A large flightless bird", "Native to Africa", "Known for its speed", "Lays the largest eggs", "Has long legs and neck", "Ostrich"
+"A place for books", "You can borrow stories", "Has quiet reading areas", "Often has computers and Wi-Fi", "A public resource for knowledge", "Library"
+"A round, citrus fruit", "Orange in color", "Can be peeled and eaten", "Used for juice", "Rich in Vitamin C", "Orange"
+"A place to watch movies", "Has a big screen", "Sells popcorn and candy", "You buy tickets to enter", "Dark inside during the show", "Movie Theater"
+"A small green vegetable", "Grows in pods", "Often found in frozen bags", "Sweet when cooked", "A good source of fiber", "Pea"
+"A striped wild cat", "Native to Asia", "A powerful hunter", "Known for its roar", "Largest cat species", "Tiger"
+"A card game", "Involves betting and strategy", "Players try to get the best hand", "Can be played with friends or in casinos", "Often associated with chips", "Poker"
+"A curved yellow fruit", "Grows in bunches", "Peel before eating", "Favorite food of monkeys", "Good source of potassium", "Banana"
+"A board game", "Buy and sell properties", "Try to bankrupt opponents", "Roll dice to move", "Has properties like Park Place and Boardwalk", "Monopoly"
+"A carbonated drink", "Sweet and fizzy", "Comes in many flavors", "Served cold", "Can be regular or diet", "Soda"
+"A large ocean mammal", "Known for spouting water", "Has a blowhole", "Can be very large", "Sings complex songs underwater", "Whale"
+"A small biting insect", "Flies and buzzes", "Can transmit diseases", "Active in warm weather", "Makes a buzzing sound", "Mosquito"
+"A type of shoe", "Often worn for sports", "Has laces and rubber soles", "Can be high-top or low-top", "Comfortable for walking or running", "Sneaker"
+"A green vegetable", "Looks like a small tree", "Often steamed or roasted", "Good for your health", "Part of the cruciferous family", "Broccoli"
+`;
+
+            // Medium CSV data (previously Hard + 200 new entries) embedded directly in the JavaScript
+            const mediumCsvData = `
+"A complex system of rules", "Governs a society or country", "Enforced by courts and police", "Can be civil or criminal", "Often studied by lawyers", "Law"
+"A celestial body", "Orbits a star", "Can be rocky or gaseous", "Eight officially recognized in our solar system", "Earth is one", "Planet"
+"A form of communication", "Uses written or spoken words", "Can be formal or informal", "Varies across cultures", "English, Spanish, Mandarin", "Language"
+"A field of study", "Deals with numbers and shapes", "Used in science and engineering", "Includes algebra, geometry, calculus", "Can be abstract or applied", "Mathematics"
+"A period of time", "Often associated with specific weather", "Four main types: spring, summer, autumn, winter", "Affects plants and animals", "Determines holidays and activities", "Season"
+"A natural phenomenon", "Involves light and sound", "Occurs during thunderstorms", "Can be dangerous", "Often followed by rain", "Lightning"
+"A type of art", "Uses a brush and pigments", "Can be realistic or abstract", "Displayed in galleries and museums", "Mona Lisa is an example", "Painting"
+"A device for telling time", "Can be worn on the wrist", "Has hands or digital display", "Often a fashion accessory", "Can be automatic or battery-powered", "Watch"
+"A type of building", "Often tall with many floors", "Used for offices or apartments", "Found in cities", "Can have a lobby and elevators", "Skyscraper"
+"A small, fast-moving particle", "Carries an electric charge", "Orbits the nucleus of an atom", "Fundamental to electricity", "Discovered by J.J. Thomson", "Electron"
+"A literary form", "Written in verse", "Often uses rhythm and rhyme", "Can express emotions or tell stories", "Shakespeare wrote many", "Poetry"
+"A type of energy", "Produced by the sun", "Essential for plant growth", "Can be converted into electricity", "Travels in waves", "Light"
+"A system of beliefs", "Often involves a higher power", "Provides moral guidance", "Practiced by many people worldwide", "Can have rituals and ceremonies", "Religion"
+"A scientific instrument", "Used to see very small objects", "Has lenses and magnification", "Invented by Zacharias Janssen", "Essential in biology and medicine", "Microscope"
+"A type of government", "Ruled by the people", "Citizens have voting rights", "Can be direct or representative", "United States is an example", "Democracy"
+"A natural satellite", "Orbits a planet", "Our planet has one", "Causes tides on Earth", "Has phases like crescent and full", "Moon"
+"A chemical element", "Atomic number 6", "Forms the basis of all organic life", "Found in diamonds and graphite", "Essential for photosynthesis", "Carbon"
+"A form of entertainment", "Performed on a stage", "Involves actors and a script", "Can be a tragedy or comedy", "Often has an audience", "Theater"
+"A type of weather phenomenon", "A rotating column of air", "Can cause widespread destruction", "Often forms during thunderstorms", "Common in 'Tornado Alley'", "Tornado"
+"A period of history", "Characterized by significant change", "Often involves new inventions or ideas", "Can be social, political, or technological", "The Industrial Revolution is one", "Revolution"
+"A unit of measurement", "Used for temperature", "Has degrees Celsius or Fahrenheit", "Invented by Anders Celsius", "Water freezes at 0 degrees Celsius", "Thermometer"
+"A type of art", "Uses a camera to capture images", "Can be black and white or color", "Often displayed in frames or albums", "Ansel Adams was famous for it", "Photography"
+"A celestial event", "Occurs when one body passes in front of another", "Can be solar or lunar", "Rare and often spectacular", "Requires specific alignment of celestial bodies", "Eclipse"
+"A branch of science", "Studies the Earth's physical structure", "Includes rocks, minerals, and landforms", "Helps understand natural disasters", "Often involves field work", "Geology"
+"A type of literary work", "A long narrative poem", "Often tells of heroic deeds", "Features gods or mythical beings", "The Odyssey is an example", "Epic"
+"A system of writing", "Uses pictures or symbols", "Ancient Egyptians used it", "Can be complex and detailed", "Often found on monuments or tombs", "Hieroglyphics"
+"A musical composition", "For a solo instrument or small ensemble", "Often has three or four movements", "Popular in the Classical era", "Beethoven wrote many", "Sonata"
+"A type of structure", "Used to cross a gap", "Can be made of wood, stone, or steel", "Connects two points over water or land", "Golden Gate is famous", "Bridge"
+"A form of government", "Ruled by a single person", "Power is inherited", "Can be absolute or constitutional", "Kings and Queens often hold this position", "Monarchy"
+"A scientific theory", "Explains the diversity of life", "Proposed by Charles Darwin", "Involves natural selection", "Suggests common ancestry", "Evolution"
+"A large body of land", "Surrounded by water on most sides", "Can contain multiple countries", "Africa, Asia, Europe are examples", "Seven major ones on Earth", "Continent"
+"A natural disaster", "Sudden shaking of the ground", "Caused by tectonic plate movement", "Can cause buildings to collapse", "Measured by Richter scale", "Earthquake"
+"A type of energy", "Produced by splitting atoms", "Used in power plants", "Can be dangerous if uncontrolled", "Associated with bombs", "Nuclear Energy"
+"A branch of philosophy", "Studies knowledge and belief", "Asks questions like 'How do we know what we know?'", "Plato and Aristotle contributed", "Focuses on the nature of reality", "Epistemology"
+"A period of artistic flourishing", "Followed the Middle Ages", "Saw a revival of classical learning", "Began in Italy", "Da Vinci and Michelangelo were key figures", "Renaissance"
+"A unit of currency", "Used in many European countries", "Introduced in 1999", "Symbol looks like an E", "Replaced francs, marks, and liras", "Euro"
+"A type of star", "Very dense and small", "Remnant of a supernova", "Emits strong gravitational pull", "Can form a black hole", "Neutron Star"
+"A form of communication", "Uses hand gestures and facial expressions", "Used by the deaf community", "Has its own grammar and syntax", "Varies by country", "Sign Language"
+"A type of musical ensemble", "Features string, woodwind, brass, and percussion sections", "Led by a conductor", "Performs classical music", "Can be large or small", "Orchestra"
+"A type of mathematical problem", "Involves finding a missing value", "Often uses variables like x and y", "Fundamental to algebra", "Requires solving equations", "Equation"
+"A natural resource", "Formed from ancient plant and animal remains", "Burned for energy", "Contributes to climate change", "Coal, oil, natural gas are examples", "Fossil Fuel"
+"A type of animal", "Can change its color to blend in", "Has a long, sticky tongue", "Eyes can move independently", "A type of lizard", "Chameleon"
+"A field of study", "Examines human society and culture", "Includes anthropology, sociology, psychology", "Uses qualitative and quantitative methods", "Aims to understand human behavior", "Social Science"
+"A type of structure", "Used for defense", "Often made of stone", "Has turrets and battlements", "Associated with medieval times", "Castle"
+"A type of literary device", "A contrast between expectation and reality", "Can be verbal, situational, or dramatic", "Often used for comedic or tragic effect", "Sarcasm is a form of it", "Irony"
+"A celestial body", "A small, rocky object orbiting the sun", "Smaller than a planet", "Many found in a belt between Mars and Jupiter", "Can sometimes hit Earth", "Asteroid"
+"A type of art", "Involves carving or modeling materials", "Can be made of stone, wood, metal, or clay", "Three-dimensional", "Statues are examples", "Sculpture"
+"A system of measurement", "Based on powers of ten", "Used worldwide for science", "Includes meters, grams, liters", "Simpler than imperial system", "Metric System"
+"A type of chemical reaction", "Releases energy as heat or light", "Involves rapid oxidation", "Requires fuel, oxygen, and heat", "Used in engines and fireplaces", "Combustion"
+"A historical period", "Followed the fall of the Western Roman Empire", "Often called the Dark Ages", "Lasted from 5th to 15th century", "Saw the rise of feudalism", "Middle Ages"
+"A type of plant", "Does not have true roots, stems, or leaves", "Reproduces by spores", "Often grows in damp, shady places", "Moss and ferns are examples", "Non-Vascular Plant"
+"A field of study", "Examines the human mind and behavior", "Includes cognitive, developmental, social branches", "Uses observation and experimentation", "Aims to understand mental processes", "Psychology"
+"A type of weapon", "Used for long-range combat", "Fires projectiles with gunpowder", "Can be a rifle, pistol, or shotgun", "Requires training to use safely", "Firearm"
+"A type of musical instrument", "Produces sound from vibrating strings", "Played with a bow or plucked", "Violin, cello, bass are examples", "Part of an orchestra", "String Instrument"
+"A form of government", "Power is held by a small group of elites", "Rule by a few", "Can be based on wealth, military power, or family", "Ancient Sparta was an example", "Oligarchy"
+"A natural phenomenon", "A large mass of ice moving slowly", "Forms over land from compacted snow", "Can carve out valleys", "Found in polar regions and high mountains", "Glacier"
+"A type of literary work", "A short, fictional story", "Often teaches a moral lesson", "Features animals as characters", "Aesop is famous for them", "Fable"
+"A scientific principle", "States that energy cannot be created or destroyed", "Only transformed from one form to another", "Fundamental to physics and chemistry", "Applies to closed systems", "Conservation of Energy"
+"A type of animal", "Known for building dams", "Has a flat tail", "Semi-aquatic rodent", "Native to North America and Eurasia", "Beaver"
+"A type of building", "Used for religious worship", "Can be a church, mosque, synagogue, or temple", "Often has unique architecture", "Place for prayer and community", "House of Worship"
+"A type of art", "Involves creating images using light-sensitive materials", "Developed in the 19th century", "Can capture moments in time", "Digital versions are common today", "Photography"
+"A celestial body", "A ball of hot, glowing gas", "Produces light and heat through nuclear fusion", "Our sun is one", "Many found in galaxies", "Star"
+"A branch of science", "Studies the universe beyond Earth", "Includes stars, planets, galaxies", "Uses telescopes for observation", "Aims to understand cosmic phenomena", "Astronomy"
+"A type of writing system", "Uses characters representing words or ideas", "Chinese and Japanese use it", "Can be complex to learn", "Differs from alphabetic systems", "Logographic System"
+"A type of government", "Ruled by a single dictator", "Power is absolute and often oppressive", "Suppresses dissent", "North Korea is an example", "Dictatorship"
+"A natural phenomenon", "A long period of abnormally low rainfall", "Causes water shortages and crop failure", "Can lead to famine", "Affects ecosystems", "Drought"
+"A type of literary work", "A long narrative, typically fictional", "Often explores characters and plot in depth", "Can be historical, fantasy, or sci-fi", "Published as a book", "Novel"
+"A scientific method", "A testable explanation for an observation", "Can be supported or refuted by evidence", "A starting point for scientific inquiry", "Must be falsifiable", "Hypothesis"
+"A type of animal", "Known for its long neck and spots", "Tallest land animal", "Eats leaves from tall trees", "Native to Africa", "Giraffe"
+"A type of building", "Used for public performances", "Often has a stage and seating", "Can host plays, concerts, or ballets", "Often ornate and grand", "Opera House"
+"A type of energy", "Generated by the movement of water", "Used in hydroelectric power plants", "Renewable and clean", "Relies on dams and turbines", "Hydroelectric Power"
+"A branch of science", "Studies living organisms", "Includes botany, zoology, ecology", "Examines life processes and interactions", "Uses observation and experimentation", "Biology"
+"A type of structure", "Used to contain water", "Often built across rivers", "Generates electricity or controls floods", "Can be made of concrete or earth", "Dam"
+"A type of literary device", "A figure of speech comparing two unlike things", "Uses 'like' or 'as'", "Adds vividness to writing", "Example: 'He is as strong as an ox'", "Simile"
+"A type of animal", "A large marine reptile", "Known for its powerful jaws", "Lives in tropical and subtropical regions", "Can be saltwater or freshwater", "Crocodile"
+"A type of weather phenomenon", "A severe snowstorm with strong winds", "Reduces visibility significantly", "Can cause whiteout conditions", "Dangerous for travel", "Blizzard"
+"A field of study", "Examines past events and human societies", "Uses primary and secondary sources", "Aims to understand cause and effect", "Often involves research and interpretation", "History"
+"A type of energy", "Generated from the Earth's internal heat", "Used in geothermal power plants", "Clean and renewable", "Accessed through hot springs or steam vents", "Geothermal Energy"
+"A type of plant", "Has a thick, woody stem", "Produces leaves and branches", "Can live for many years", "Provides oxygen and shade", "Tree"
+"A type of musical instrument", "Produces sound by blowing air through it", "Can be woodwind or brass", "Flute, trumpet, clarinet are examples", "Used in orchestras and bands", "Wind Instrument"
+"A form of government", "Ruled by a king or queen", "Power is inherited", "Can be absolute or constitutional", "United Kingdom has one", "Monarchy"
+"A celestial body", "A collection of stars, gas, and dust", "Held together by gravity", "Our solar system is part of one", "Can be spiral, elliptical, or irregular", "Galaxy"
+"A branch of science", "Studies the properties and behavior of matter and energy", "Includes mechanics, thermodynamics, electromagnetism", "Uses mathematical models", "Aims to understand fundamental laws of the universe", "Physics"
+"A type of writing system", "Uses a set of letters to represent sounds", "English uses it", "Simpler than logographic systems", "Can be phonetic", "Alphabet"
+"A natural phenomenon", "A large wave caused by underwater earthquakes or volcanic eruptions", "Can cause massive destruction on coastlines", "Travels across oceans", "Often mistaken for tidal waves", "Tsunami"
+"A field of study", "Examines the production, distribution, and consumption of goods and services", "Studies scarcity and choice", "Includes microeconomics and macroeconomics", "Aims to understand markets and economies", "Economics"
+"A type of literary work", "A play written for performance", "Involves dialogue and stage directions", "Can be a tragedy, comedy, or drama", "Performed in a theater", "Drama"
+"A scientific law", "Describes a fundamental relationship in nature", "Always observed to be true under given conditions", "Often expressed as a mathematical equation", "Example: Newton's Laws of Motion", "Scientific Law"
+"A type of animal", "A large, flightless bird", "Native to Australia", "Known for its long neck and legs", "Fast runner", "Emu"
+"A type of building", "Used for higher education", "Students earn degrees here", "Has departments and faculties", "Often has a campus", "University"
+"A type of energy", "Generated from the sun's rays", "Used in solar panels", "Clean and renewable", "Can power homes and businesses", "Solar Energy"
+"A branch of science", "Studies the composition, structure, properties, and reactions of matter", "Includes organic, inorganic, physical branches", "Uses experiments to understand substances", "Aims to create new materials", "Chemistry"
+"A type of structure", "Used for transportation over water", "Can be a boat, ship, or ferry", "Floats on water", "Used for travel, trade, or recreation", "Vessel"
+"A type of literary device", "A figure of speech where a word or phrase is applied to an object or action to which it is not literally applicable", "Does not use 'like' or 'as'", "Example: 'The world is a stage'", "Adds imagery to writing", "Metaphor"
+"A type of animal", "A large, powerful marine mammal", "Known for its tusks", "Lives in Arctic waters", "A type of seal", "Walrus"
+"A type of weather phenomenon", "A visible mass of water droplets or ice crystals in the atmosphere", "Can be white or gray", "Indicates weather conditions", "Forms in various shapes", "Cloud"
+"A field of study", "Examines the Earth's atmosphere and weather patterns", "Includes forecasting and climate science", "Uses data from satellites and radar", "Aims to predict weather", "Meteorology"
+"A type of energy", "Generated from the wind", "Used in wind turbines", "Clean and renewable", "Harvested in windy areas", "Wind Energy"
+"A type of plant", "A large, woody plant with a single main stem", "Produces leaves and branches", "Can live for many years", "Provides oxygen and shade", "Tree"
+"A type of musical instrument", "Produces sound by striking it", "Includes drums, cymbals, xylophones", "Provides rhythm and texture", "Used in many genres of music", "Percussion Instrument"
+"A small, furry mammal", "Known for burrowing", "Often found in gardens", "Eats worms and insects", "Has poor eyesight", "Mole"
+"A type of footwear", "Worn for warmth and comfort indoors", "Often soft and fluffy", "Has a non-slip sole", "Worn before bed", "Slippers"
+"A place to buy books", "Has many shelves filled with titles", "Often has a cafe", "You can browse for hours", "Can be independent or a chain", "Bookstore"
+"A type of weather", "Tiny ice pellets falling from the sky", "Often bounces when it hits the ground", "Can be mixed with rain or snow", "Forms in cold clouds", "Sleet"
+"A common household appliance", "Used to clean floors", "Has a bag or canister to collect dirt", "Uses suction power", "Can be upright or handheld", "Vacuum Cleaner"
+"A type of vehicle", "Used for public transport in cities", "Runs on tracks", "Powered by electricity", "Can be a streetcar or subway car", "Tram"
+"A type of fruit", "Small and round, often red or black", "Grows on bushes or trees", "Sweet or tart taste", "Used in pies or jams", "Berry"
+"A place to grow food", "Often has rows of plants", "Requires sunlight and water", "Can be a farm or a small plot", "Produces vegetables or fruits", "Farm"
+"A type of animal", "Known for its long neck and humps", "Lives in deserts", "Can store water for long periods", "Used for transport or milk", "Camel"
+"A type of music", "Often features improvisation", "Originated in African-American communities", "Has a strong rhythm and blue notes", "Artists like Louis Armstrong", "Jazz"
+"A place to store food", "Keeps items cold", "Has shelves and drawers", "Found in a kitchen", "Essential for keeping food fresh", "Refrigerator"
+"A type of weather", "A visible electrical discharge", "Occurs during thunderstorms", "Followed by thunder", "Can strike objects on the ground", "Lightning"
+"A type of game", "Played on a checkered board", "Uses pieces like pawns, rooks, knights", "Goal is to checkmate the king", "Requires strategy and foresight", "Chess"
+"A type of building", "Used for storing and displaying art", "Has various collections", "People visit to see paintings and sculptures", "Can be large or small", "Art Gallery"
+"A type of tree", "Known for its broad leaves", "Sheds leaves in autumn", "Oak, maple, birch are examples", "Provides shade", "Deciduous Tree"
+"A type of clothing", "Worn on the feet inside shoes", "Comes in pairs", "Can be ankle, crew, or knee-high", "Made of cotton or wool", "Socks"
+"A place to relax outdoors", "Has benches and trees", "Often has playgrounds or walking paths", "Public space in a city", "Good for picnics or strolls", "Park"
+"A type of animal", "A large, flightless bird", "Native to Australia", "Known for its long neck and legs", "Fast runner", "Emu"
+"A type of food", "Long and thin, made from dough", "Boiled and served with sauce", "Italian origin", "Spaghetti, penne, lasagna are examples", "Pasta"
+"A type of transportation", "Has a large body and many windows", "Used for public transport on roads", "Follows a fixed route", "Driven by a driver", "Bus"
+"A type of fruit", "Small and round, often red or green", "Grows in bunches on vines", "Used to make wine", "Sweet or tart", "Grape"
+"A type of weather", "Water vapor condensed into tiny droplets", "Forms clouds", "Can fall as rain, snow, or hail", "Essential for life", "Precipitation"
+"A type of building", "Used for religious services", "Often has a steeple or minaret", "Place of worship for a community", "Can be a church, mosque, or temple", "Religious Building"
+"A type of energy", "Produced by the sun", "Used in solar panels", "Clean and renewable", "Can power homes and businesses", "Solar Energy"
+"A type of animal", "A large, powerful marine mammal", "Known for its tusks", "Lives in Arctic waters", "A type of seal", "Walrus"
+"A type of weather phenomenon", "A visible mass of water droplets or ice crystals in the atmosphere", "Can be white or gray", "Indicates weather conditions", "Forms in various shapes", "Cloud"
+"A field of study", "Examines the Earth's atmosphere and weather patterns", "Includes forecasting and climate science", "Uses data from satellites and radar", "Aims to predict weather", "Meteorology"
+"A type of energy", "Generated from the wind", "Used in wind turbines", "Clean and renewable", "Harvested in windy areas", "Wind Energy"
+"A type of plant", "A large, woody plant with a single main stem", "Produces leaves and branches", "Can live for many years", "Provides oxygen and shade", "Tree"
+"A type of musical instrument", "Produces sound by striking it", "Includes drums, cymbals, xylophones", "Provides rhythm and texture", "Used in many genres of music", "Percussion Instrument"
+`;
+
+            // Hard CSV data (NEW from uploaded hard.csv and hard2.csv and hard3.csv) embedded directly in the JavaScript
+            const hardCsvData = `
+"Article", "Conjunction", "Intejection", "Noun", "Verb", "Parts of speech"
+"Root", "Division", "Addition", "Subtraction", "Multiplication", "Mathematical operations"
+"Family", "Decision", "Christmas", "Palm", "Barking up the wrong", "Words that come before tree"
+"Semaphore", "Mailbox", "Soccer refree", "Pole in a golf hole", "Email marked as important", "Things with flags"
+"Akbar (India)", "Cyrus (Persia)", "Frederick (Prussia)", "Catherine (Russia)", "Alexander (Macedonia)", "Rulers known as the Great"
+"Victoria", "Regina", "Whitehorse", "Toronto", "Quebec City", "Canadian capitals"
+"Watermelon", "Pumpkin", "Sunflower", "Bird feeder", "A strawberry's outside", "All have seeds"
+"Pressure", "Control", "Oath", "Lock and key", "The weather (if you're sick)", "Words that come after under"
+"Pay", "Zone", "A chord", "A bargain", "While the iron is hot", "Words that come after strike"
+"Newton", "Rankine", "Kelvin", "Fahrenheit", "Celsius", "Temperature scales!"
+"Chestnut", "Chocolate", "Sepia", "Burnt umber", "Mahogany", "Shades of brown"
+"Henry", "Zidane", "Mbappé", "Ronaldo", "Messi", "Soccer/football stars"
+"Fin", "Booster", "Payload system", "Nose cone", "Parachutes (for landings from space)", "Parts of a rocket"
+"A group of stars", "Forms a recognizable pattern", "Often named after animals or mythological figures", "Ursa Major, Orion, Leo are examples", "Visible in the night sky", "Constellation"
+"A type of rock", "Formed from cooled magma or lava", "Granite, basalt, obsidian are examples", "Can be intrusive or extrusive", "Often hard and crystalline", "Igneous Rock"
+"A period of time", "Lasts for 100 years", "Often marked by significant historical events", "The 20th century, 21st century", "From Latin 'centum'", "Century"
+"A scientific instrument", "Used to measure atmospheric pressure", "Helps predict weather changes", "Invented by Evangelista Torricelli", "Can be aneroid or mercury", "Barometer"
+"A type of chemical bond", "Involves the sharing of electrons", "Forms molecules", "Strong and stable", "Water (H2O) has them", "Covalent Bond"
+"A form of government", "Ruled by a small group of wealthy elites", "Power based on economic status", "Can lead to inequality", "Ancient Venice was an example", "Plutocracy"
+"A literary device", "The use of an object or idea to represent something else", "Can be a person, place, or thing", "Often has a deeper meaning", "A dove representing peace", "Symbolism"
+"A type of mathematical function", "Its graph is a U-shape", "Involves a squared variable (x^2)", "Used to model projectile motion", "Can have a vertex and axis of symmetry", "Quadratic Function"
+"A natural phenomenon", "A large, destructive fire", "Spreads rapidly through forests or buildings", "Can be caused by lightning or human activity", "Difficult to control", "Wildfire"
+"A field of study", "Examines the origins and development of human language", "Includes phonetics, syntax, semantics", "Studies how languages change over time", "Aims to understand linguistic structures", "Linguistics"
+"A type of animal", "A large, flightless bird", "Native to South America", "Known for its long legs and neck", "Similar to an ostrich but smaller", "Rhea"
+"A type of building", "Used for performing scientific experiments", "Often found in schools or research institutions", "Has specialized equipment and safety protocols", "Can be wet or dry", "Laboratory"
+"A type of energy", "Produced by the decay of radioactive isotopes", "Used in nuclear power plants", "Can be dangerous if released", "Associated with atomic bombs", "Nuclear Fission"
+"A branch of philosophy", "Studies the nature of moral principles", "Asks questions about right and wrong", "Includes deontology, utilitarianism, virtue ethics", "Guides human behavior", "Ethics"
+"A historical period", "The period of European history from the 14th to the 17th century", "Marked by a renewed interest in classical art and learning", "Followed the Middle Ages", "Led to major scientific and artistic advancements", "Renaissance"
+"A unit of time", "Equal to 1,000 years", "Often used in historical contexts", "The first millennium, second millennium", "From Latin 'mille'", "Millennium"
+"A type of star", "A very dense and compact stellar remnant", "Formed from the core of a massive star after a supernova", "Has immense gravitational pull", "Can be a source of X-rays", "Neutron Star"
+"A form of communication", "Uses a system of dots and dashes", "Transmitted via electrical signals or light", "Invented by Samuel Morse", "Used in telegraphy", "Morse Code"
+"A type of musical form", "A large-scale musical composition for orchestra, chorus, and soloists", "Usually based on a sacred text", "Handel's Messiah is a famous example", "Performed in concerts or churches", "Oratorio"
+"A type of mathematical curve", "Forms a symmetrical U-shape", "The graph of a quadratic equation", "Can open upwards or downwards", "Has a vertex and axis of symmetry", "Parabola"
+"A natural resource", "A fossil fuel formed from ancient marine organisms", "Burned for energy", "Used to produce gasoline and plastics", "Extracted from underground reservoirs", "Petroleum"
+"A type of animal", "A large, flightless bird", "Native to New Zealand", "Nocturnal and shy", "Has long whiskers and a long beak", "Kiwi"
+"A field of study", "Examines the interaction between living organisms and their environment", "Includes ecosystems, populations, communities", "Studies energy flow and nutrient cycling", "Aims to understand biodiversity", "Ecology"
+"A type of structure", "A fortified building or complex", "Used for defense against attack", "Often has thick walls, towers, and a moat", "Associated with medieval warfare", "Fortress"
+"A literary device", "A statement that appears self-contradictory but contains a deeper truth", "Example: 'Less is more'", "Challenges conventional wisdom", "Often used in poetry and philosophy", "Paradox"
+"A celestial body", "A small, irregularly shaped body orbiting the Sun", "Composed of ice, dust, and rock", "Develops a tail when near the Sun", "Halley's is famous", "Comet"
+"A type of art", "A two-dimensional representation of a subject", "Created using paint, charcoal, or other media", "Can be realistic, abstract, or impressionistic", "Displayed on walls or canvases", "Drawing"
+"A system of measurement", "Based on the foot, pound, and second", "Used primarily in the United States", "Less common globally than the metric system", "Has units like miles, gallons, ounces", "Imperial System"
+"A type of chemical reaction", "Absorbs energy from its surroundings, causing cooling", "Requires an input of heat", "Example: instant cold packs", "Opposite of exothermic", "Endothermic Reaction"
+"A historical period", "The period following the Renaissance", "Characterized by scientific and intellectual advancements", "Emphasized reason and individualism", "Led to revolutions in thought and society", "Enlightenment"
+`;
+
+            // Function to load the CSV data from the embedded string
+            function loadCSVData(csvString) {
+                try {
+                    // Use a Set to store unique rows (clue + answer combination)
+                    const uniqueRows = new Set();
+                    const parsedData = [];
+
+                    csvString.trim().split('\n').forEach(row => {
+                        const cells = row.match(/(?:[^,"']+|"[^"]*")+/g);
+                        if (cells && cells.length === 6) {
+                            const processedCells = cells.map(cell => cell.trim().replace(/^"|"$/g, ''));
+                            const rowKey = processedCells.join('|'); // Create a unique key for the row
+                            if (!uniqueRows.has(rowKey)) {
+                                uniqueRows.add(rowKey);
+                                parsedData.push(processedCells);
+                            }
+                        }
+                    });
+                    gameData = parsedData;
+                    startGame();
+                } catch (error) {
+                    console.error('Error parsing game data:', error);
+                    messageDisplay.textContent = 'Failed to parse game data. Please ensure the embedded data is correctly formatted.';
+                    submitGuessButton.disabled = true;
+                    guessInput.disabled = true;
+                }
+            }
+
+            // Function to start a new game
+            function startGame() {
+                if (gameData.length === 0) {
+                    messageDisplay.textContent = 'No game data available for this difficulty. Please select a difficulty.';
+                    return;
+                }
+
+                stopConfetti();
+                confettiContainer.innerHTML = '';
+                stopSadEmojis();
+                stopHappyEmojis();
+                emojiContainer.innerHTML = '';
+
+                body.classList.remove('correct-bg', 'incorrect-bg');
+
+                currentClueIndex = 0;
+                messageDisplay.textContent = '';
+                incorrectGuessesDisplay.innerHTML = '';
+                playAgainButton.classList.add('hidden');
+                submitGuessButton.classList.remove('hidden');
+                submitGuessButton.disabled = false;
+                guessInput.disabled = false;
+                guessInput.value = '';
+
+                document.querySelectorAll('#clueTable tbody tr').forEach(row => {
+                    row.classList.add('hidden');
+                    row.classList.remove('shake');
+                    row.classList.remove('correct-clue-revealed');
+                });
+
+                const randomIndex = Math.floor(Math.random() * gameData.length);
+                currentRow = gameData[randomIndex];
+
+                for (let i = 1; i <= maxClues; i++) {
+                    document.getElementById(`clue${i}`).textContent = currentRow[i - 1];
+                }
+                document.getElementById('answer').textContent = currentRow[maxClues];
+
+                revealNextClue();
+            }
+
+            // Function to reveal the next clue
+            function revealNextClue() {
+                if (currentClueIndex < maxClues) {
+                    currentClueIndex++;
+                    document.getElementById(`clue${currentClueIndex}-row`).classList.remove('hidden');
+                } else {
+                    revealAnswer(false);
+                }
+                guessInput.focus();
+            }
+
+            // Function to check the player's guess
+            function checkGuess() {
+                const playerGuess = guessInput.value.trim();
+                const correctAnswer = currentRow[maxClues].replace(/^"|"$/g, '').trim(); // Get raw correct answer
+
+                // Input validation: if guess is empty, shake input box and return
+                if (playerGuess === '') {
+                    messageDisplay.textContent = 'Please enter a guess.';
+                    guessInput.classList.add('shake');
+                    setTimeout(() => {
+                        guessInput.classList.remove('shake');
+                        messageDisplay.textContent = ''; // Clear message after shake
+                    }, 600); // Match shake animation duration
+                    return; // Stop function execution
+                }
+
+                if (isSimilarAnswer(playerGuess, correctAnswer)) { // Use the new similarity check
+                    messageDisplay.textContent = 'Correct! You got it!';
+                    submitGuessButton.disabled = true;
+                    guessInput.disabled = true;
+                    submitGuessButton.classList.add('hidden');
+
+                    for (let i = 1; i <= currentClueIndex; i++) {
+                        document.getElementById(`clue${i}-row`).classList.add('correct-clue-revealed');
+                    }
+
+                    revealAnswer(true);
+                    playAgainButton.classList.remove('hidden');
+                    startConfetti();
+                    startHappyEmojis();
+                    body.classList.remove('incorrect-bg');
+                    body.classList.add('correct-bg');
+                } else {
+                    messageDisplay.textContent = 'Incorrect guess. Try again!';
+                    guessInput.value = '';
+                    incorrectGuessesDisplay.innerHTML += `<del>${playerGuess}</del> `;
+                    shakeTable();
+                    setTimeout(() => {
+                        messageDisplay.textContent = '';
+                        revealNextClue();
+                        if (currentClueIndex === maxClues && !isSimilarAnswer(playerGuess, correctAnswer)) { // Check similarity again for final guess
+                            messageDisplay.textContent = `Game Over! The answer was: "${currentRow[maxClues]}"`;
+                            submitGuessButton.disabled = true;
+                            guessInput.disabled = true;
+                            submitGuessButton.classList.add('hidden');
+                            revealAnswer(false);
+                            playAgainButton.classList.remove('hidden');
+                            startSadEmojis();
+                            body.classList.remove('correct-bg');
+                            body.classList.add('incorrect-bg');
+                        }
+                    }, 600);
+                }
+            }
+
+            // Function to shake the table
+            function shakeTable() {
+                const table = document.getElementById('clueTable');
+                table.classList.add('shake');
+                setTimeout(() => {
+                    table.classList.remove('shake');
+                }, 500);
+            }
+
+            // Function to reveal all clues and the answer
+            function revealAnswer(isCorrectGuess) {
+                for (let i = 1; i <= maxClues; i++) {
+                    document.getElementById(`clue${i}-row`).classList.remove('hidden');
+                }
+                document.getElementById('answer-row').classList.remove('hidden');
+                submitGuessButton.classList.add('hidden');
+            }
+
+            // Confetti functions
+            function getRandomColor() {
+                const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722', '#795548', '#9E9E9E', '#607D8B'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            function createConfetti() {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.backgroundColor = getRandomColor();
+
+                const startX = Math.random() * window.innerWidth;
+                const startY = -20;
+                const endX = startX + (Math.random() - 0.5) * 400;
+                const endY = window.innerHeight + 20;
+
+                confetti.style.setProperty('--x', `${startX}px`);
+                confetti.style.setProperty('--y', `${startY}px`);
+                confetti.style.setProperty('--x-end', `${endX}px`);
+                confetti.style.setProperty('--y-end', `${endY}px`);
+
+                confettiContainer.appendChild(confetti);
+                confetti.addEventListener('animationend', () => {
+                    confetti.remove();
+                });
+            }
+
+            function startConfetti() {
+                stopConfetti();
+                confettiInterval = setInterval(() => {
+                    for (let i = 0; i < 10; i++) {
+                        createConfetti();
+                    }
+                }, 100);
+                setTimeout(() => {
+                    stopConfetti();
+                }, 3000);
+            }
+
+            function stopConfetti() {
+                if (confettiInterval) {
+                    clearInterval(confettiInterval);
+                    confettiInterval = null;
+                }
+            }
+
+            // Sad Emoji functions
+            function createSadEmoji() {
+                const emojis = ['😞', '😭', '👎']; // Sad face, crying face, and thumbs down emojis
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+                const emoji = document.createElement('div');
+                emoji.classList.add('emoji');
+                emoji.textContent = randomEmoji;
+
+                const startX = Math.random() * window.innerWidth;
+                const startY = -20;
+                const endX = startX + (Math.random() - 0.5) * 400;
+                const endY = window.innerHeight + 20;
+
+                emoji.style.setProperty('--x', `${startX}px`);
+                emoji.style.setProperty('--y', `${startY}px`);
+                emoji.style.setProperty('--x-end', `${endX}px`);
+                emoji.style.setProperty('--y-end', `${endY}px`);
+
+                emojiContainer.appendChild(emoji);
+                emoji.addEventListener('animationend', () => {
+                    emoji.remove();
+                });
+            }
+
+            function startSadEmojis() {
+                stopSadEmojis();
+                sadEmojiInterval = setInterval(() => {
+                    for (let i = 0; i < 5; i++) {
+                        createSadEmoji();
+                    }
+                }, 150);
+                setTimeout(() => {
+                    stopSadEmojis();
+                }, 3000);
+            }
+
+            function stopSadEmojis() {
+                if (sadEmojiInterval) {
+                    clearInterval(sadEmojiInterval);
+                    sadEmojiInterval = null;
+                }
+            }
+
+            // Happy Emoji functions
+            function createHappyEmoji() {
+                const emojis = ['😊', '😄', '🥳', '👍']; // Happy face emojis and thumbs up emoji
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+                const emoji = document.createElement('div');
+                emoji.classList.add('emoji');
+                emoji.textContent = randomEmoji;
+
+                const startX = Math.random() * window.innerWidth;
+                const startY = -20;
+                const endX = startX + (Math.random() - 0.5) * 400;
+                const endY = window.innerHeight + 20;
+
+                emoji.style.setProperty('--x', `${startX}px`);
+                emoji.style.setProperty('--y', `${startY}px`);
+                emoji.style.setProperty('--x-end', `${endX}px`);
+                emoji.style.setProperty('--y-end', `${endY}px`);
+
+                emojiContainer.appendChild(emoji);
+                emoji.addEventListener('animationend', () => {
+                    emoji.remove();
+                });
+            }
+
+            function startHappyEmojis() {
+                stopHappyEmojis();
+                happyEmojiInterval = setInterval(() => {
+                    for (let i = 0; i < 5; i++) {
+                        createHappyEmoji();
+                    }
+                }, 150);
+                setTimeout(() => {
+                    stopHappyEmojis();
+                }, 3000);
+            }
+
+            function stopHappyEmojis() {
+                if (happyEmojiInterval) {
+                    clearInterval(happyEmojiInterval);
+                    happyEmojiInterval = null;
+                }
+            }
+
+
+            // Difficulty button handling
+            function selectDifficulty(difficulty) {
+                easyButton.classList.remove('selected');
+                mediumButton.classList.remove('selected');
+                hardButton.classList.remove('selected');
+
+                if (difficulty === 'easy') {
+                    easyButton.classList.add('selected');
+                    loadCSVData(easyCsvData);
+                    localStorage.setItem('gameDifficulty', 'easy');
+                } else if (difficulty === 'medium') {
+                    mediumButton.classList.add('selected');
+                    loadCSVData(mediumCsvData);
+                    localStorage.setItem('gameDifficulty', 'medium');
+                }
+                else {
+                    hardButton.classList.add('selected');
+                    loadCSVData(hardCsvData);
+                    localStorage.setItem('gameDifficulty', 'hard');
+                }
+            }
+
+            // Event Listeners
+            submitGuessButton.addEventListener('click', checkGuess);
+            guessInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter' && !submitGuessButton.disabled) {
+                    checkGuess();
+                }
+            });
+            playAgainButton.addEventListener('click', () => {
+                // Reload the page, the DOMContentLoaded listener will pick up the stored difficulty
+                location.reload();
+            });
+
+            easyButton.addEventListener('click', () => selectDifficulty('easy'));
+            mediumButton.addEventListener('click', () => selectDifficulty('medium'));
+            hardButton.addEventListener('click', () => selectDifficulty('hard'));
+
+            // Initial load: default to Easy or load from localStorage
+            const storedDifficulty = localStorage.getItem('gameDifficulty');
+            if (storedDifficulty) {
+                selectDifficulty(storedDifficulty);
+            } else {
+                selectDifficulty('easy'); // Default if no difficulty is stored
+            }
+        });
+    </script>
+</body>
+</html>
