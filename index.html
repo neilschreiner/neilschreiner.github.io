@@ -18,6 +18,44 @@
         a:hover {
             text-decoration: underline;
         }
+        /* Basic button styling for the expand/collapse icon */
+        .toggle-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem; /* Larger icon */
+            line-height: 1;
+            padding: 0;
+            margin-left: 0.5rem;
+            color: #4a5568; /* Tailwind's gray-700 */
+            transition: transform 0.2s ease-in-out;
+        }
+        .toggle-button:focus {
+            outline: none;
+        }
+        .toggle-button.collapsed-icon {
+            transform: rotate(-90deg); /* Rotate for plus sign */
+        }
+
+        /* Styles for the collapsible content */
+        .section-content {
+            max-height: 9999px; /* Large value to ensure content is fully visible when expanded */
+            overflow: hidden;
+            transition: max-height 0.5s ease-out, mask-image 0.5s ease-out;
+            mask-image: none; /* No mask by default (when expanded) */
+            -webkit-mask-image: none; /* For WebKit browsers */
+        }
+
+        .section-content.collapsed {
+            max-height: 3.5em; /* Adjust this value to show approximately one line of text */
+            mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%); /* For WebKit browsers */
+        }
+
+        /* Cursor pointer for clickable sections */
+        .collapsible-section {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="bg-gray-800 min-h-screen flex flex-col justify-center p-4">
@@ -29,10 +67,28 @@
     <!-- Main content container: white box with rounded edges and shadow -->
     <div class="bg-white rounded-lg shadow-xl p-8 md:p-10 lg:p-12 max-w-3xl w-full mx-auto mt-4 mb-10">
 
+        <!-- Bio Section -->
+        <section class="mb-8 text-left collapsible-section">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200 flex items-center justify-between">
+                <span>Bio</span>
+                <button class="toggle-button collapsed-icon" data-target="bio-content" aria-expanded="false">+
+                </button>
+            </h2>
+            <div id="bio-content" class="space-y-3 section-content collapsed">
+                <p class="text-gray-800 italic">
+                    A customer-focused leader with over 20 years of experience in SaaS solution design, deployment, and implementation, and management. He excels at collaborating with diverse clients to implement adaptable cloud solutions for growth. His career highlights include managing projects at Precisely and leading teams at Genesys in various professional services and product management roles, delivering global solutions across multiple channels. Neil is proficient in Customer Experience, Account Management along with many scripting based languages and CRMAccount Management tools.
+                </p>
+            </div>
+        </section>
+
         <!-- Professional Section -->
-        <section class="mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">Professional</h2>
-            <div class="space-y-3">
+        <section class="mb-8 collapsible-section">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200 flex items-center justify-between">
+                <span>Professional</span>
+                <button class="toggle-button" data-target="professional-content" aria-expanded="true">−
+                </button>
+            </h2>
+            <div id="professional-content" class="space-y-3 section-content">
                 <p class="text-gray-800 flex items-center">
                     <img src="LI-In-Bug.png" alt="LinkedIn Logo" class="w-6 h-6 mr-2 inline-block">
                     <a href="https://linkedin.com/in/neilschreiner" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 transition duration-300 ease-in-out">
@@ -49,17 +105,25 @@
         </section>
 
         <!-- Projects Section -->
-        <section class="mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">Projects</h2>
-            <div class="space-y-3">
+        <section class="mb-8 collapsible-section">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200 flex items-center justify-between">
+                <span>Projects</span>
+                <button class="toggle-button" data-target="projects-content" aria-expanded="true">−
+                </button>
+            </h2>
+            <div id="projects-content" class="space-y-3 section-content">
                 <p class="text-gray-800">TBD</p>
             </div>
         </section>
 
         <!-- Games Section -->
-        <section>
-            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">Games</h2>
-            <div class="space-y-3">
+        <section class="collapsible-section">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200 flex items-center justify-between">
+                <span>Games</span>
+                <button class="toggle-button" data-target="games-content" aria-expanded="true">−
+                </button>
+            </h2>
+            <div id="games-content" class="space-y-3 section-content">
                 <p class="text-gray-800 flex items-center">
                     <img src="GTC-12345QuestionMark-400x400.png" alt="Guess the Category Logo" class="w-6 h-6 mr-2 inline-block">
                     <a href="https://neilschreiner.github.io/GuessTheCategory/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 transition duration-300 ease-in-out">
@@ -70,5 +134,54 @@
         </section>
 
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Function to toggle a section's state
+            function toggleSection(button, targetContent) {
+                const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+                if (isExpanded) {
+                    // Collapse the section
+                    targetContent.classList.add('collapsed'); // Apply collapsed styles
+                    button.setAttribute('aria-expanded', 'false');
+                    button.textContent = '+'; // Change to plus sign
+                    button.classList.add('collapsed-icon'); // Add class for rotation
+                } else {
+                    // Expand the section
+                    targetContent.classList.remove('collapsed'); // Remove collapsed styles
+                    button.setAttribute('aria-expanded', 'true');
+                    button.textContent = '−'; // Change to minus sign
+                    button.classList.remove('collapsed-icon'); // Remove class for rotation
+                }
+            }
+
+            // Event listeners for the toggle buttons
+            const toggleButtons = document.querySelectorAll('.toggle-button');
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    // Stop propagation to prevent the section's click listener from firing
+                    event.stopPropagation();
+                    const targetId = button.dataset.target;
+                    const targetContent = document.getElementById(targetId);
+                    toggleSection(button, targetContent);
+                });
+            });
+
+            // Event listeners for clicking on the section itself
+            const collapsibleSections = document.querySelectorAll('.collapsible-section');
+            collapsibleSections.forEach(section => {
+                section.addEventListener('click', (event) => {
+                    // Check if the click target is not the button itself
+                    if (!event.target.closest('.toggle-button')) {
+                        const button = section.querySelector('.toggle-button');
+                        const targetId = button.dataset.target;
+                        const targetContent = document.getElementById(targetId);
+                        toggleSection(button, targetContent);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
